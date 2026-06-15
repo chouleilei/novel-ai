@@ -1,0 +1,29 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Local agent/tool artifacts
+.codex
+.sisyphus/
+
+# Local auth/secrets and database dumps
+frontend/.htpasswd
+*.dump
+
+# Python/test/cache artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Runtime data/logs
+*.log
+*.db
+*.sqlite
+*.sqlite3

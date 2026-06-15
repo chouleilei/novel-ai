@@ -1,0 +1,2 @@
+"""Novel AI backend package."""
+

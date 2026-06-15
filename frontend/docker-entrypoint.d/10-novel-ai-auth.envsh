@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+if [ -z "${NOVEL_AI_WEB_SESSION_TOKEN:-}" ]; then
+  NOVEL_AI_WEB_SESSION_TOKEN="$(sha256sum /etc/nginx/.htpasswd | awk '{print $1}')"
+  export NOVEL_AI_WEB_SESSION_TOKEN
+fi
+
+escaped_token="$(printf '%s' "$NOVEL_AI_WEB_SESSION_TOKEN" | sed 's/[\/&]/\\&/g')"
+sed "s/__NOVEL_AI_WEB_SESSION_TOKEN__/${escaped_token}/g" \
+  /etc/nginx/novel-ai/default.conf.template \
+  > /etc/nginx/conf.d/default.conf

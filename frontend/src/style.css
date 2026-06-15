@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #0f766e;
+  --color-primary-50: #ecfdf5;
+  --color-primary-100: #ccfbf1;
+  --color-primary-200: #99f6e4;
+  --color-primary-300: #5eead4;
+  --color-primary-500: #14b8a6;
+  --color-primary-600: #0f766e;
+  --color-primary-700: #0f5f59;
+  --color-primary-hover: #115e59;
+  --color-secondary: #64748b;
+  --color-success: #047857;
+  --color-danger: #b42318;
+  --color-warning: #b54708;
+  --color-info: #0f766e;
+  --color-background: #f6f7f4;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8faf8;
+  --color-text: #18212f;
+  --color-text-muted: #667085;
+  --color-border: #e3e8e2;
+  --color-border-strong: #cbd5c8;
+}
+
+body {
+  background: var(--color-background);
+  @apply text-[var(--color-text)] antialiased;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center rounded-lg border border-transparent px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.btn-sm {
+  @apply px-3 py-1.5 text-xs;
+}
+
+.btn-primary {
+  @apply bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)];
+}
+
+.btn-secondary {
+  @apply border-[var(--color-border)] bg-white text-[var(--color-text)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-surface-muted)];
+}
+
+.btn-success {
+  @apply bg-[var(--color-success)] text-white hover:bg-emerald-700;
+}
+
+.btn-warning {
+  @apply bg-[var(--color-warning)] text-white hover:bg-amber-700;
+}
+
+.btn-danger {
+  @apply bg-[var(--color-danger)] text-white hover:bg-red-700;
+}
+
+.input-field {
+  @apply block w-full rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-[var(--color-text)] shadow-none focus:border-[var(--color-primary)] focus:ring-[var(--color-primary)] sm:text-sm;
+}
+
+.card {
+  @apply overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_1px_2px_rgba(16,24,40,0.04)];
+}
+
+.card-header {
+  @apply border-b border-[var(--color-border)] px-4 py-4 sm:px-6;
+}
+
+.card-body {
+  @apply px-4 py-5 sm:p-6;
+}
+
+.card-footer {
+  @apply px-4 py-4 border-t border-[var(--color-border)] sm:px-6;
+}
+
+.badge {
+  @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium;
+}
+
+.badge-success {
+  @apply bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200;
+}
+
+.badge-primary {
+  @apply bg-teal-50 text-teal-700 ring-1 ring-teal-200;
+}
+
+.badge-warning {
+  @apply bg-amber-50 text-amber-700 ring-1 ring-amber-200;
+}
+
+.badge-danger {
+  @apply bg-red-50 text-red-700 ring-1 ring-red-200;
+}
+
+.badge-info {
+  @apply bg-sky-50 text-sky-700 ring-1 ring-sky-200;
+}
+
+.badge-secondary {
+  @apply bg-slate-50 text-slate-600 ring-1 ring-slate-200;
+}

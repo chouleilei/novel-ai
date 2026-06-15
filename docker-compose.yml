@@ -1,0 +1,152 @@
+x-worker-common: &worker-common
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+  restart: unless-stopped
+  depends_on:
+    db:
+      condition: service_healthy
+    api:
+      condition: service_healthy
+  environment: &worker-common-environment
+    NOVEL_AI_APP_ENV: development
+    NOVEL_AI_DEBUG: "true"
+    NOVEL_AI_LOG_LEVEL: ${NOVEL_AI_LOG_LEVEL:-INFO}
+    NOVEL_AI_DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/novel_ai
+    NOVEL_AI_WORKER_POLL_INTERVAL_SECONDS: "2"
+    NOVEL_AI_WORKER_LEASE_SECONDS: "60"
+    NOVEL_AI_MODEL_SECRET_ENCRYPTION_KEY: ${NOVEL_AI_MODEL_SECRET_ENCRYPTION_KEY:-}
+    NOVEL_AI_DEFAULT_WRITER_BASE_URL: ${NOVEL_AI_DEFAULT_WRITER_BASE_URL:-http://43.173.121.145:4000/v1}
+    NOVEL_AI_DEFAULT_WRITER_MODEL_NAME: ${NOVEL_AI_DEFAULT_WRITER_MODEL_NAME:-deepseek-v3.2}
+    NOVEL_AI_DEFAULT_CRITIC_BASE_URL: ${NOVEL_AI_DEFAULT_CRITIC_BASE_URL:-https://cli.746525006.xyz/v1}
+    NOVEL_AI_DEFAULT_CRITIC_MODEL_NAME: ${NOVEL_AI_DEFAULT_CRITIC_MODEL_NAME:-gpt-5.4(high)}
+    NOVEL_AI_DEFAULT_MEMORY_BASE_URL: ${NOVEL_AI_DEFAULT_MEMORY_BASE_URL:-https://cli.746525006.xyz/v1}
+    NOVEL_AI_DEFAULT_MEMORY_MODEL_NAME: ${NOVEL_AI_DEFAULT_MEMORY_MODEL_NAME:-gpt-5.4-mini}
+    NOVEL_AI_DEFAULT_PROMPT_BUILDER_BASE_URL: ${NOVEL_AI_DEFAULT_PROMPT_BUILDER_BASE_URL:-http://43.173.121.145:4000/v1}
+    NOVEL_AI_DEFAULT_PROMPT_BUILDER_MODEL_NAME: ${NOVEL_AI_DEFAULT_PROMPT_BUILDER_MODEL_NAME:-deepseek-v3.2}
+    WRITER_API_KEY: ${WRITER_API_KEY:-}
+    CRITIC_API_KEY: ${CRITIC_API_KEY:-}
+    MEMORY_API_KEY: ${MEMORY_API_KEY:-}
+    PROMPT_BUILDER_API_KEY: ${PROMPT_BUILDER_API_KEY:-}
+  command: python -m backend.worker.runner
+  volumes:
+    - ./backend:/app/backend
+    - ./scripts:/app/scripts
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: novel-ai-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: novel_ai
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "127.0.0.1:${NOVEL_AI_HOST_DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d novel_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: novel-ai-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NOVEL_AI_APP_ENV: development
+      NOVEL_AI_DEBUG: "true"
+      NOVEL_AI_LOG_LEVEL: ${NOVEL_AI_LOG_LEVEL:-INFO}
+      NOVEL_AI_DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/novel_ai
+      NOVEL_AI_WORKER_NAME: docker-api
+      NOVEL_AI_WORKER_POLL_INTERVAL_SECONDS: "2"
+      NOVEL_AI_WORKER_LEASE_SECONDS: "60"
+      NOVEL_AI_MODEL_SECRET_ENCRYPTION_KEY: ${NOVEL_AI_MODEL_SECRET_ENCRYPTION_KEY:-}
+      NOVEL_AI_DEFAULT_WRITER_BASE_URL: ${NOVEL_AI_DEFAULT_WRITER_BASE_URL:-http://43.173.121.145:4000/v1}
+      NOVEL_AI_DEFAULT_WRITER_MODEL_NAME: ${NOVEL_AI_DEFAULT_WRITER_MODEL_NAME:-deepseek-v3.2}
+      NOVEL_AI_DEFAULT_CRITIC_BASE_URL: ${NOVEL_AI_DEFAULT_CRITIC_BASE_URL:-https://cli.746525006.xyz/v1}
+      NOVEL_AI_DEFAULT_CRITIC_MODEL_NAME: ${NOVEL_AI_DEFAULT_CRITIC_MODEL_NAME:-gpt-5.4(high)}
+      NOVEL_AI_DEFAULT_MEMORY_BASE_URL: ${NOVEL_AI_DEFAULT_MEMORY_BASE_URL:-https://cli.746525006.xyz/v1}
+      NOVEL_AI_DEFAULT_MEMORY_MODEL_NAME: ${NOVEL_AI_DEFAULT_MEMORY_MODEL_NAME:-gpt-5.4-mini}
+      NOVEL_AI_DEFAULT_PROMPT_BUILDER_BASE_URL: ${NOVEL_AI_DEFAULT_PROMPT_BUILDER_BASE_URL:-http://43.173.121.145:4000/v1}
+      NOVEL_AI_DEFAULT_PROMPT_BUILDER_MODEL_NAME: ${NOVEL_AI_DEFAULT_PROMPT_BUILDER_MODEL_NAME:-deepseek-v3.2}
+      WRITER_API_KEY: ${WRITER_API_KEY:-}
+      CRITIC_API_KEY: ${CRITIC_API_KEY:-}
+      MEMORY_API_KEY: ${MEMORY_API_KEY:-}
+      PROMPT_BUILDER_API_KEY: ${PROMPT_BUILDER_API_KEY:-}
+    command: >
+      sh -c "alembic upgrade head &&
+      uvicorn backend.main:app --host 0.0.0.0 --port 8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "127.0.0.1:${NOVEL_AI_HOST_API_PORT:-8050}:8000"
+    volumes:
+      - ./backend:/app/backend
+      - ./scripts:/app/scripts
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: novel-ai-frontend
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NOVEL_AI_WEB_SESSION_TOKEN: ${NOVEL_AI_WEB_SESSION_TOKEN:-}
+    ports:
+      - "127.0.0.1:${NOVEL_AI_HOST_WEB_PORT:-8051}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/healthz >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  worker:
+    <<: *worker-common
+    container_name: novel-ai-worker
+    environment:
+      <<: *worker-common-environment
+      NOVEL_AI_WORKER_NAME: docker-worker
+
+  worker2:
+    <<: *worker-common
+    container_name: novel-ai-worker-2
+    environment:
+      <<: *worker-common-environment
+      NOVEL_AI_WORKER_NAME: docker-worker-2
+
+  worker3:
+    <<: *worker-common
+    container_name: novel-ai-worker-3
+    environment:
+      <<: *worker-common-environment
+      NOVEL_AI_WORKER_NAME: docker-worker-3
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: novel-ai-cloudflared
+    restart: unless-stopped
+    user: "0:0"
+    depends_on:
+      frontend:
+        condition: service_healthy
+    command: tunnel --config /etc/cloudflared/config.yml run
+    volumes:
+      - /root/.cloudflared:/etc/cloudflared:ro
+
+volumes:
+  postgres_data:
