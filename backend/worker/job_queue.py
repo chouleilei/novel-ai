@@ -47,12 +47,16 @@ class JobQueue:
             )
             .where(
                 or_(
+                    Project.lease_owner == self.settings.worker_name,
                     Project.lease_expires_at.is_(None),
                     Project.lease_expires_at < now,
                 )
             )
             .where(Project.status == ProjectStatus.RUNNING.value)
-            .order_by(GenerationJob.created_at.asc())
+            .order_by(
+                (Project.lease_owner == self.settings.worker_name).desc(),
+                GenerationJob.created_at.asc(),
+            )
             .with_for_update(skip_locked=True, of=(GenerationJob, Project))
             .limit(1)
         )
@@ -100,10 +104,10 @@ class JobQueue:
         job.status = JobStatus.DONE.value
         job.lease_owner = None
         job.lease_expires_at = None
-        project = await self.session.get(Project, job.project_id)
-        if project is not None and project.lease_owner == self.settings.worker_name:
-            project.lease_owner = None
-            project.lease_expires_at = None
+        # 保留项目租约：同一 worker 可立即领取该项目排队中的下一章，
+        # 实现"写完一部再写下一部"的粘性调度。若项目没有后续任务
+        # （完成/暂停），租约会在 worker_lease_seconds 后自然过期，
+        # 届时其他 worker 可正常接管，无需手动释放。
         await self.session.flush()
 
     async def mark_failed(self, job: GenerationJob, error_message: str) -> None:
