@@ -53,8 +53,17 @@ class JobQueue:
                 )
             )
             .where(Project.status == ProjectStatus.RUNNING.value)
+            # 未持有租约的项目 lease_owner 为 NULL，比较结果也是 NULL；
+            # Postgres 的 DESC 默认 NULLS FIRST，会把无租约项目排到自己
+            # 持有的项目前面，必须显式 NULLS LAST 才能让本 worker 的项目优先。
             .order_by(
-                (Project.lease_owner == self.settings.worker_name).desc(),
+                (
+                    (Project.lease_owner == self.settings.worker_name)
+                    & Project.lease_expires_at.is_not(None)
+                    & (Project.lease_expires_at >= now)
+                )
+                .desc()
+                .nulls_last(),
                 GenerationJob.created_at.asc(),
             )
             .with_for_update(skip_locked=True, of=(GenerationJob, Project))
