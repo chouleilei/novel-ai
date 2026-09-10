@@ -136,17 +136,63 @@ services:
       <<: *worker-common-environment
       NOVEL_AI_WORKER_NAME: docker-worker-3
 
+  worker4:
+    <<: *worker-common
+    container_name: novel-ai-worker-4
+    environment:
+      <<: *worker-common-environment
+      NOVEL_AI_WORKER_NAME: docker-worker-4
+
+  worker5:
+    <<: *worker-common
+    container_name: novel-ai-worker-5
+    environment:
+      <<: *worker-common-environment
+      NOVEL_AI_WORKER_NAME: docker-worker-5
+
+  worker6:
+    <<: *worker-common
+    container_name: novel-ai-worker-6
+    environment:
+      <<: *worker-common-environment
+      NOVEL_AI_WORKER_NAME: docker-worker-6
+
+  worker7:
+    <<: *worker-common
+    container_name: novel-ai-worker-7
+    environment:
+      <<: *worker-common-environment
+      NOVEL_AI_WORKER_NAME: docker-worker-7
+
+  worker8:
+    <<: *worker-common
+    container_name: novel-ai-worker-8
+    environment:
+      <<: *worker-common-environment
+      NOVEL_AI_WORKER_NAME: docker-worker-8
+
+  worker9:
+    <<: *worker-common
+    container_name: novel-ai-worker-9
+    environment:
+      <<: *worker-common-environment
+      NOVEL_AI_WORKER_NAME: docker-worker-9
+
+  worker10:
+    <<: *worker-common
+    container_name: novel-ai-worker-10
+    environment:
+      <<: *worker-common-environment
+      NOVEL_AI_WORKER_NAME: docker-worker-10
+
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: novel-ai-cloudflared
     restart: unless-stopped
-    user: "0:0"
     depends_on:
       frontend:
         condition: service_healthy
-    command: tunnel --config /etc/cloudflared/config.yml run
-    volumes:
-      - /root/.cloudflared:/etc/cloudflared:ro
+    command: tunnel --no-autoupdate --url http://frontend:80
 
 volumes:
   postgres_data:
