@@ -625,6 +625,7 @@ class Pipeline:
                         ),
                         chapter.chapter_number,
                     )
+                    await self.retention_cleanup.cleanup_chapter_content_chunks(project.id, chapter.chapter_number)
             await self.session.commit()
         except GenerationInterrupted as exc:
             await self._pause_current_generation(
@@ -1486,9 +1487,23 @@ class Pipeline:
         stage_timeout_seconds = (runtime_settings or {}).get("llm_stage_timeout_seconds", self.settings.llm_stage_timeout_seconds)
         received_text = False
         chunk_batch_count = 0
+        pending_chunk_parts: list[str] = []
         last_batch_commit_at = utcnow()
         BATCH_COMMIT_CHUNK_COUNT = 20
         BATCH_COMMIT_INTERVAL_SECONDS = 2.0
+
+        async def flush_chunk_events() -> None:
+            if not pending_chunk_parts:
+                return
+            batched_chunk = "".join(pending_chunk_parts)
+            pending_chunk_parts.clear()
+            await self.events.append(
+                project.id,
+                ProjectEventType.CONTENT_CHUNK,
+                {"chunk": batched_chunk},
+                chapter.chapter_number,
+            )
+
         try:
             while True:
                 next_chunk = cast(Coroutine[Any, Any, str], anext(iterator))
@@ -1522,13 +1537,14 @@ class Pipeline:
                     last_progress_at = now
                     content_parts.append(chunk)
                     attempt.content = (attempt.content or "") + chunk
-                    await self.events.append(project.id, ProjectEventType.CONTENT_CHUNK, {"chunk": chunk}, chapter.chapter_number)
+                    pending_chunk_parts.append(chunk)
                     chunk_batch_count += 1
                     should_batch_commit = (
                         chunk_batch_count >= BATCH_COMMIT_CHUNK_COUNT
                         or (now - last_batch_commit_at).total_seconds() >= BATCH_COMMIT_INTERVAL_SECONDS
                     )
                     if should_batch_commit:
+                        await flush_chunk_events()
                         await self.session.commit()
                         chunk_batch_count = 0
                         last_batch_commit_at = now
@@ -1544,8 +1560,8 @@ class Pipeline:
                             waited_seconds=no_text_timeout_seconds,
                         )
                 await self._ensure_project_running(project, stage="writer_stream")
-            if chunk_batch_count > 0:
-                await self.session.commit()
+            await flush_chunk_events()
+            await self.session.commit()
             return "".join(content_parts)
         except Exception:
             if pending_chunk_task is not None and not pending_chunk_task.done():
@@ -1818,4 +1834,5 @@ class Pipeline:
             },
             chapter.chapter_number,
         )
+        await self.retention_cleanup.cleanup_chapter_content_chunks(project.id, chapter.chapter_number)
         await self.session.commit()

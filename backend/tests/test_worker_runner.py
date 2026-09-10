@@ -159,6 +159,7 @@ async def test_mark_failed_uses_default_message_when_error_is_blank():
     session = SimpleNamespace(
         get=AsyncMock(return_value=project),
         scalar=AsyncMock(side_effect=[chapter, attempt]),
+        execute=AsyncMock(),
         flush=AsyncMock(),
     )
     queue = JobQueue(session)  # type: ignore[arg-type]

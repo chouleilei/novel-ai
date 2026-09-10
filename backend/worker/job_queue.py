@@ -16,6 +16,7 @@ from backend.db.models import (
     ProjectStatus,
 )
 from backend.services.generation_state import apply_job_failure
+from backend.services.retention_cleanup_service import RetentionCleanupService
 
 DEFAULT_JOB_ERROR_MESSAGE = "任务执行失败，未返回详细错误信息。"
 
@@ -116,6 +117,11 @@ class JobQueue:
             if project.lease_owner == self.settings.worker_name:
                 project.lease_owner = None
                 project.lease_expires_at = None
+        if job.chapter_number is not None:
+            await RetentionCleanupService(self.session).cleanup_chapter_content_chunks(
+                job.project_id,
+                job.chapter_number,
+            )
         chapter = None
         attempt = None
         if job.chapter_number is not None:
