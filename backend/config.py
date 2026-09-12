@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     default_writer_provider: str = "openai_compatible"
     default_writer_base_url: str = "http://43.173.121.145:4000/v1"
     default_writer_model_name: str = "deepseek-v3.2"
-    default_writer_max_tokens: int | None = 4000
+    default_writer_max_tokens: int | None = None
     default_writer_api_key_env_var: str = "WRITER_API_KEY"
 
     default_critic_provider: str = "openai_compatible"
